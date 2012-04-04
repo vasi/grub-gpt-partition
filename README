@@ -1,0 +1,52 @@
+=== Grub hack for rEFIt coexistence ===
+
+Many people use rEFIt to triple-boot their Mac between OS X, Windows and Linux. However, using Grub 2 in BIOS mode as the Linux bootloader may interfere with rEFIt's ability to choose between Windows and Linux.
+
+This script is one attempt to resolve this.
+
+
+=== The problem ===
+
+Grub 2 currently supports two BIOS boot scenarios on GPT-partitioned disks:
+
+1. Boot code in the protective MBR, Grub core in the Grub BIOS Boot Partition. Because this uses the MBR, using Grub as a secondary bootloader (eg: with rEFIt) won't work correctly.
+
+2. Boot code in a Partition Boot Record, Grub core in files on the root filesystem. This frees up the MBR, but the boot code has to use blocklists to locate Grub core. This is fragile, and will break if things move around on your root filesystem.
+
+It should be possible to combine the benefits of these two scenarios, without the drawbacks. Boot code would go in a PBR, not the MBR, so it doesn't interfere with rEFIt. But Grub core would go in the BBP, so it never moves around.
+
+Unfortunately the Grub developers didn't seem thrilled with my proposal to add support for this use case, so this script is an ad-hoc way to make it work.
+
+
+=== How to use it ===
+
+WARNING: This is a real hack, things may break! Please backup your partition table before trying to use this program.
+
+Requirements:
+
+- a GPT-partitioned disk
+- a primary bootloader like rEFIt
+- a running Linux system
+- grub-install
+
+You'll need to select a partition for Grub's boot code, that is both in the hybrid-MBR and has room for boot code in the partition boot record.
+
+Suppose you have a typical triple-boot configuration on a Mac. Your GPT looks like:
+
+1. EFI System Partition
+2. Mac OS X
+3. Mac Recovery Partition
+4. Windows
+5. Linux root
+6. Linux swap
+
+Let's use partition 2 for the boot code:
+
+	# grub-gpt-partition.py /dev/sda2
+
+It won't interfere with Mac OS X, which boots via EFI. If you already installed Grub's boot code in the MBR, you may wish to remove it:
+
+	# dd if=/dev/zero bs=440 count=1 of=/dev/sda
+
+Now Grub and rEFIt can happily coexist!
+
