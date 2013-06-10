@@ -54,7 +54,7 @@ def sysfs(blockdev):
 # Offset of partition in device, in 512-byte blocks
 def part_offset(device):
 	start = os.path.join(sysfs(device), 'start')
-	with open(start) as f:
+	with open(start, 'rb') as f:
 		return int(f.read())
 
 # Flush fs buffers
@@ -129,7 +129,7 @@ def grub_core_image_path():
 def grub_write_bootcode(boot_device):
 	sync()
 	boot = array.array('c')
-	with open(boot_device) as f:
+	with open(boot_device, 'rb') as f:
 		boot.fromfile(f, BLOCKSIZE)
 	core_offset = disk_offset(grub_core_image_path())
 	bbp_offset = part_offset(bios_boot_partition([part_disk(boot_device)]))
@@ -142,7 +142,7 @@ def grub_write_bootcode(boot_device):
 			print >>sys.stderr, "Boot sector isn't pointing at core.img, abort"
 		sys.exit(1)
 	
-	with open(boot_device, 'w') as f:
+	with open(boot_device, 'wb') as f:
 		boot.tofile(f)
 
 def fake_grub_setup():
@@ -153,22 +153,23 @@ def fake_grub_setup():
 """
 	contents = contents % (setup_name,)
 	
-	file = tempfile.NamedTemporaryFile(delete=False)
-	file.write(contents)
-	os.fchmod(file.fileno(), 320) # 0500 octal
-	file.close()
-	return file.name
+	# Can't delete on close, /bin/sh refuses to execute busy file
+	f = tempfile.NamedTemporaryFile(delete=False)
+	f.write(contents)
+	os.fchmod(f.fileno(), 320) # 0500 octal
+	f.close()
+	return f.name
 
 # Install grub bootcode onto the boot device AND the BIOS boot partition
 def grub_install(boot_device):
 	# Save the MBR
 	disk = part_disk(boot_device)
-	with open(disk) as f:
+	with open(disk, 'rb') as f:
 		mbr = f.read(BLOCKSIZE)
 	# Install grub to MBR, so it will initialize the BIOS boot part
 	check_call(['grub-install', disk], stderr=PIPE, stdout=PIPE)
 	# Restore the MBR
-	with open(disk, 'w') as f:
+	with open(disk, 'wb') as f:
 		f.write(mbr)
 	
 	# Install boot code to partition
