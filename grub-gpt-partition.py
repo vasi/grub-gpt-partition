@@ -33,7 +33,8 @@ def extfs_block(device, path):
 
 # Field from filesystem superblock, as string
 def dumpe2fs_field(device, field):
-	popen = Popen(['dumpe2fs', '-h', device], stdout=PIPE, stderr=PIPE)
+	popen = Popen(['dumpe2fs', '-h', device], stdout=PIPE,
+		stderr=PIPE, universal_newlines=True)
 	output = popen.communicate()[0]
 	for (f,v) in re.findall(r'^([^:]+):\s*(.*)', output, flags=re.MULTILINE):
 		if f == field:
@@ -93,7 +94,7 @@ def bios_boot_partition(devnames):
 				continue
 			dev = os.path.basename(root)
 			popen = Popen(['udevadm', 'info', '--query', 'all', '--name', dev],
-				stdout=PIPE)
+				stdout=PIPE, universal_newlines=True)
 			props = popen.communicate()[0]
 			if re.search(r"type.*=%s" % BIOS_BOOT_TYPE, props,
 					flags = re.IGNORECASE):
@@ -128,7 +129,7 @@ def grub_core_image_path():
 # Modify and write fixed bootcode on a device
 def grub_write_bootcode(boot_device):
 	sync()
-	boot = array.array('c')
+	boot = array.array('B')
 	with open(boot_device, 'rb') as f:
 		boot.fromfile(f, BLOCKSIZE)
 	core_offset = disk_offset(grub_core_image_path())
