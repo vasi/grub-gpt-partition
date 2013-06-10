@@ -154,7 +154,7 @@ def fake_grub_setup():
 	contents = contents % (setup_name,)
 	
 	# Can't delete on close, /bin/sh refuses to execute busy file
-	f = tempfile.NamedTemporaryFile(delete=False)
+	f = tempfile.NamedTemporaryFile(delete=False, mode='w')
 	f.write(contents)
 	os.fchmod(f.fileno(), 320) # 0500 octal
 	f.close()
