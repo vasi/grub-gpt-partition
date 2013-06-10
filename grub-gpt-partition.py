@@ -124,7 +124,7 @@ def fake_grub_setup():
 	file.write("""#!/bin/sh
 grub-setup --skip-fs-probe "$@"
 """)
-	os.fchmod(file.fileno(), 0500)
+	os.fchmod(file.fileno(), 320) # 0500 octal
 	file.close()
 	return file.name
 
