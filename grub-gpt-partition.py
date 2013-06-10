@@ -107,13 +107,23 @@ def grub_fixup_bootcode(sector, core_offset, bbp_offset):
 		struct.pack_into('<Q', sector, GRUB_KERNEL_OFFSET, bbp_offset)
 	return sector, off
 
+# Find the location of core.img
+def grub_core_image_path():
+	top = "/boot/grub"
+	name = "core.img"
+	for path, dirs, files in os.walk(top, topdown=True):
+		if name in files:
+			return os.path.join(path, name)
+	print >>sys.stderr, "Can't find core.img"
+	sys.exit(1)
+
 # Modify and write fixed bootcode on a device
 def grub_write_bootcode(boot_device):
 	sync()
 	boot = array.array('c')
 	with open(boot_device) as f:
 		boot.fromfile(f, BLOCKSIZE)
-	core_offset = disk_offset('/boot/grub/core.img')
+	core_offset = disk_offset(grub_core_image_path())
 	bbp_offset = part_offset(bios_boot_partition([part_disk(boot_device)]))
 	boot, orig_off = grub_fixup_bootcode(boot, core_offset, bbp_offset)
 	
@@ -130,7 +140,6 @@ def grub_write_bootcode(boot_device):
 def fake_grub_setup():
 	setup_names = ['grub-bios-setup', 'grub-setup']
 	setup_name = next(p for p in setup_names if which(p))
-	print setup_name
 	contents = """#!/bin/sh
 %s --skip-fs-probe "$@"
 """
