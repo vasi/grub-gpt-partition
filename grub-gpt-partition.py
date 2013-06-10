@@ -10,6 +10,14 @@ import tempfile
 BLOCKSIZE = 512
 GRUB_KERNEL_OFFSET = 0x5c
 
+# Find an executable in PATH
+def which(name):
+	for path in os.environ["PATH"].split(os.pathsep):
+		f = os.path.join(path, name)
+		if os.path.isfile(f) and os.access(f, os.X_OK):
+			return f
+	return None
+
 # Quote a path for debugfs
 def debugfs_quote(path):
 	path = os.path.realpath(path)
@@ -120,10 +128,16 @@ def grub_write_bootcode(boot_device):
 		boot.tofile(f)
 
 def fake_grub_setup():
+	setup_names = ['grub-bios-setup', 'grub-setup']
+	setup_name = next(p for p in setup_names if which(p))
+	print setup_name
+	contents = """#!/bin/sh
+%s --skip-fs-probe "$@"
+"""
+	contents = contents % (setup_name,)
+	
 	file = tempfile.NamedTemporaryFile(delete=False)
-	file.write("""#!/bin/sh
-grub-setup --skip-fs-probe "$@"
-""")
+	file.write(contents)
 	os.fchmod(file.fileno(), 320) # 0500 octal
 	file.close()
 	return file.name
