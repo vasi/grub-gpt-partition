@@ -20,7 +20,6 @@ def which(name):
 
 # Quote a path for debugfs
 def debugfs_quote(path):
-	path = os.path.realpath(path)
 	return '"%s"' % path.replace('"', '""')
 
 # Physical fs-block corresponding to start of a file
@@ -62,6 +61,14 @@ def part_offset(device):
 def sync():
 	check_call('sync')
 
+# Get the mountpoint containing a path, and the relative path within it
+def path_mountpoint(path):
+	path = os.path.abspath(path)
+	mp = path
+	while not os.path.ismount(mp):
+		mp = os.path.dirname(mp)
+	return mp, os.path.relpath(path, mp)
+
 # Get device whose filesystem contains a given path
 def path_device(path):
 	st = os.lstat(path)
@@ -73,7 +80,8 @@ def path_device(path):
 # Offset on disk of a file, in 512-byte blocks
 def disk_offset(path):
 	dev = path_device(path)
-	part = extfs_block(dev, path) * (extfs_block_size(dev) / BLOCKSIZE)
+	mp, rel = path_mountpoint(path)
+	part = extfs_block(dev, rel) * (extfs_block_size(dev) / BLOCKSIZE)
 	return part_offset(dev) + part
 
 # Find the BIOS boot partition somewhere in the given devices
